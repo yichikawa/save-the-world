@@ -4,7 +4,7 @@ import(
 	"log"
 	"fmt"
 	"net/http"
-	//"html/template"
+	"html/template"
         "database/sql"
         _ "github.com/go-sql-driver/mysql"
 )
@@ -28,18 +28,24 @@ func yichikawaHandler(w http.ResponseWriter, r *http.Request) {
         }
 	
 	//クエリを実行しrowsに結果を取得
-	rows, err := db.Query("select * from intro where name='yichikawa'")
+	rows, err := db.Query("select name,intro from intro where id=1")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer rows.Close()
 	
-	//結果スキャンしレスポンスライターに文字列として出力
-	var id int
+	//結果スキャンし変数に代入
 	var name string
 	var intro string
 	rows.Next()
-	err = rows.Scan(&id,&name,&intro)
-	if err != nil {log.Fatal(err)}
-	fmt.Fprintf(w,"名前=%s,自己紹介=%s\n",name, intro)
+	rows.Scan(&name,&intro)
 	
+	//テンプレートを使ってデータを含んだhtml？をレスポンスライターに渡す
+	t, err :=template.ParseFiles("introtemplate.tpl")
+	if err != nil {
+		log.Fatal(err)
+	}
+	t.Execute(w,intro)	
 }	
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,18 +65,19 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         //クエリを実行しrowsに結果を取得
-        rows, err := db.Query("select * from test")
+        rows, err := db.Query("select * from intro")
         defer rows.Close()
 
         //結果を1行ずつスキャンしレスポンスライターに文字列として出力
         var id int
         var name string
+	var intro string
         for rows.Next(){
-                err := rows.Scan(&id,&name)
+                err := rows.Scan(&id,&name,&intro)
                 if err != nil {
                         log.Fatal(err)
                 }
-                fmt.Fprintf(w,"ID=%d,Name=%s\n",id, name)
+                fmt.Fprintf(w,"ID=%d,名前=%s,紹介=%s\n",id, name, intro)
         }
 }
 
