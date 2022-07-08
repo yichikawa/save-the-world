@@ -1,6 +1,7 @@
 package main
 
 import(
+	_ "os"
 	"log"
 	"fmt"
 	"net/http"
@@ -35,17 +36,19 @@ func yichikawaHandler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	
 	//結果スキャンし変数に代入
-	var name string
-	var intro string
+	type IntroData struct {
+		Name string
+		Intro string
+	}
+	Idata := new(IntroData)
 	rows.Next()
-	rows.Scan(&name,&intro)
-	
+	rows.Scan(&Idata.Name,&Idata.Intro)
 	//テンプレートを使ってデータを含んだhtml？をレスポンスライターに渡す
 	t, err :=template.ParseFiles("introtemplate.tpl")
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.Execute(w,intro)	
+	t.Execute(w, Idata)	
 }	
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +57,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
         db, err := sql.Open("mysql", passstr )
         if err != nil {
                 log.Fatal(err)
-        }
+        	}
         defer db.Close()
 
         //DB接続成否をチェック
@@ -62,22 +65,26 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
         if err != nil {
                 log.Println("データベース接続失敗")
                 log.Fatal(err)
-        }
+        	}
 
         //クエリを実行しrowsに結果を取得
-        rows, err := db.Query("select * from intro")
+        rows, err := db.Query("select name from intro")
         defer rows.Close()
 
         //結果を1行ずつスキャンしレスポンスライターに文字列として出力
-        var id int
-        var name string
-	var intro string
+        s := make([]string,0)
+	var name string 
         for rows.Next(){
-                err := rows.Scan(&id,&name,&intro)
+                err := rows.Scan(&name)
+		s = append(s,name)
                 if err != nil {
                         log.Fatal(err)
                 }
-                fmt.Fprintf(w,"ID=%d,名前=%s,紹介=%s\n",id, name, intro)
+	t, err :=template.ParseFiles("top.tpl")
+	if err != nil {
+		log.Fatal(err)
+	}
+	t.Execute(w, s)		
         }
 }
 
